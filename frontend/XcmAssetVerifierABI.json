@@ -1,0 +1,4 @@
+[
+    "function verifyAsset(string calldata assetId, string calldata originChain, uint256 amount) external",
+    "event AssetVerified(string indexed assetId, string originChain, uint8 score, bool anomaly)"
+]

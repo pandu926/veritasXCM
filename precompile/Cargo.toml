@@ -1,0 +1,9 @@
+[package]
+name = "veritasxcm-precompile"
+version = "0.1.0"
+edition = "2021"
+description = "VeritasXCM Rust verification precompile — hash verification, anomaly detection, and composite scoring"
+
+[lib]
+name = "veritasxcm_precompile"
+path = "src/lib.rs"

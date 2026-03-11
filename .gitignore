@@ -1,0 +1,40 @@
+# Foundry
+cache/
+out/
+broadcast/
+.foundry_cache/
+
+# Node
+node_modules/
+dist/
+package-lock.json
+
+# Rust
+target/
+Cargo.lock
+
+# Environment (NEVER commit secrets)
+.env
+.env.local
+.env.test
+.env.production
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright
+playwright-report/
+artifacts/
+test-results/
+
+# Project specific
+frontend/node_modules/
+frontend/dist/

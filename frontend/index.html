@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VeritasXCM — Trustless Cross-Chain Asset Verification</title>
+    <meta
+      name="description"
+      content="Trustless asset verification oracle on Polkadot Hub. Verify cross-chain assets in real-time using XCM queries and Rust precompiles."
+    />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <!-- Ethers.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+      .btn-connect {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 100px;
+        padding: 8px 18px;
+        color: var(--text);
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+      }
+      .btn-connect:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--pink);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══ Animated Background ═══ -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow--1"></div>
+    <div class="bg-glow bg-glow--2"></div>
+    <div class="bg-glow bg-glow--3"></div>
+
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+      <div class="header__brand">
+        <div class="header__logo">
+          <svg
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="20"
+              cy="20"
+              r="18"
+              stroke="url(#logo-grad)"
+              stroke-width="2.5"
+            />
+            <path d="M20 8L26 16H14L20 8Z" fill="url(#logo-grad)" />
+            <path
+              d="M14 18H26L23 26H17L14 18Z"
+              fill="url(#logo-grad)"
+              opacity="0.7"
+            />
+            <circle cx="20" cy="30" r="2" fill="url(#logo-grad)" />
+            <defs>
+              <linearGradient id="logo-grad" x1="8" y1="8" x2="32" y2="32">
+                <stop stop-color="#E6007A" />
+                <stop offset="1" stop-color="#6D3AEE" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <h1 class="header__title">VeritasXCM</h1>
+          <p class="header__subtitle">Trustless Cross-Chain Verification</p>
+        </div>
+      </div>
+      <div class="header__status" id="walletStatusContainer">
+        <button
+          id="connectWalletBtn"
+          class="btn-connect"
+          onclick="connectWallet()"
+        >
+          Connect Wallet
+        </button>
+        <div
+          id="connectedState"
+          style="display: none; align-items: center; gap: 8px"
+        >
+          <div class="status-dot" id="statusDot"></div>
+          <span
+            id="statusText"
+            style="
+              font-family: &quot;JetBrains Mono&quot;, monospace;
+              font-size: 0.8rem;
+            "
+            >Paseo</span
+          >
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══ Hero Stats ═══ -->
+    <section class="stats">
+      <div class="stat-card">
+        <span class="stat-card__value" id="statTests">152</span>
+        <span class="stat-card__label">Tests Passing</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statParachains">4</span>
+        <span class="stat-card__label">Parachains</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statContracts">9</span>
+        <span class="stat-card__label">Smart Contracts</span>
+      </div>
+      <div class="stat-card" style="border-color: var(--safe)">
+        <span
+          class="stat-card__value"
+          style="
+            color: var(--safe);
+            background: none;
+            -webkit-text-fill-color: var(--safe);
+          "
+          >LIVE</span
+        >
+        <span class="stat-card__label">Paseo Testnet</span>
+      </div>
+    </section>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main">
+      <!-- ─── Verify Panel ─── -->
+      <section class="panel panel--verify" id="verifyPanel">
+        <h2 class="panel__title">
+          <span class="panel__icon">🔍</span>
+          Verify Asset (On-Chain)
+        </h2>
+
+        <!-- Quick Fill Buttons -->
+        <div class="quick-fill">
+          <button
+            class="quick-btn quick-btn--safe"
+            onclick="quickFill('aDOT', 'acala', 1000)"
+          >
+            <span class="quick-btn__dot safe"></span>aDOT / Acala
+          </button>
+          <button
+            class="quick-btn quick-btn--safe"
+            onclick="quickFill('iBTC', 'interlay', 100)"
+          >
+            <span class="quick-btn__dot safe"></span>iBTC / Interlay
+          </button>
+          <button
+            class="quick-btn quick-btn--warn"
+            onclick="quickFill('vDOT', 'bifrost', 500)"
+          >
+            <span class="quick-btn__dot warn"></span>vDOT / Bifrost
+          </button>
+          <button
+            class="quick-btn quick-btn--danger"
+            onclick="quickFill('xcDOT', 'moonbeam', 1000)"
+          >
+            <span class="quick-btn__dot danger"></span>xcDOT / Moonbeam
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form id="verifyForm" onsubmit="handleVerify(event)">
+          <div class="form-group">
+            <label for="assetId">Asset ID</label>
+            <input
+              type="text"
+              id="assetId"
+              placeholder="e.g., aDOT, iBTC, vDOT"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="originChain">Origin Chain</label>
+            <input
+              type="text"
+              id="originChain"
+              placeholder="e.g., acala, interlay, bifrost"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="amount">Amount</label>
+            <input
+              type="number"
+              id="amount"
+              placeholder="e.g., 1000"
+              min="1"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-verify" id="verifyBtn">
+            <span class="btn-verify__text">Verify on Paseo (Submit Tx)</span>
+            <span class="btn-verify__loading" style="display: none">
+              <span class="spinner"></span> Awaiting Tx...
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn-connect"
+            style="
+              width: 100%;
+              margin-top: 8px;
+              border-color: rgba(255, 255, 255, 0.1);
+            "
+            onclick="handleReadState()"
+          >
+            Read Latest State (No Tx)
+          </button>
+        </form>
+      </section>
+
+      <!-- ─── Result Panel ─── -->
+      <section class="panel panel--result" id="resultPanel">
+        <h2 class="panel__title">
+          <span class="panel__icon">📊</span>
+          Smart Contract Result
+        </h2>
+
+        <!-- Empty State -->
+        <div class="result-empty" id="resultEmpty">
+          <div class="result-empty__icon">⛓️</div>
+          <p>
+            Select an asset to verify its legitimacy<br /><small
+              style="opacity: 0.5"
+              >Reads live state from Paseo Asset Hub</small
+            >
+          </p>
+        </div>
+
+        <!-- Result Content -->
+        <div class="result-content" id="resultContent" style="display: none">
+          <!-- Score Ring -->
+          <div class="score-ring-container">
+            <svg class="score-ring" viewBox="0 0 160 160">
+              <circle class="score-ring__bg" cx="80" cy="80" r="70" />
+              <circle
+                class="score-ring__fill"
+                id="scoreRingFill"
+                cx="80"
+                cy="80"
+                r="70"
+              />
+            </svg>
+            <div class="score-ring__value" id="scoreValue">0</div>
+            <div class="score-ring__label">TRUST SCORE</div>
+          </div>
+
+          <!-- Status Badge -->
+          <div class="result-badge" id="resultBadge">
+            <span class="result-badge__icon" id="badgeIcon">✓</span>
+            <span class="result-badge__text" id="badgeText">VERIFIED</span>
+          </div>
+
+          <!-- Message -->
+          <p class="result-message" id="resultMessage"></p>
+          <p
+            style="
+              font-size: 0.75rem;
+              color: var(--pink);
+              margin-bottom: 16px;
+              font-family: monospace;
+            "
+            id="txHashLink"
+          ></p>
+
+          <!-- Details -->
+          <div class="result-details" id="resultDetails">
+            <div class="detail-row">
+              <span class="detail-label">Asset</span>
+              <span class="detail-value" id="detailAsset">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Origin</span>
+              <span class="detail-value" id="detailOrigin">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Verified At</span>
+              <span class="detail-value" id="detailSupply">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Anomaly Status</span>
+              <span class="detail-value" id="detailAnomaly">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ═══ History Table ═══ -->
+    <section class="history-section" id="historySection">
+      <h2 class="section-title">On-Chain Verifications</h2>
+      <div class="table-container">
+        <table class="history-table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Chain</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th>Tx / Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ Footer ═══ -->
+    <footer class="footer">
+      <p>
+        Built for <strong>Polkadot Solidity Hackathon 2026</strong> • Powered by
+        XCM + PolkaVM + Rust
+      </p>
+      <p class="footer__sub">
+        Live on Paseo Asset Hub • 0x254244D6AE0aA428aEF063f84D65968a087A1D8d
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+[
+    "function getVerificationResult(string calldata assetId, string calldata originChain) external view returns (uint8 score, bytes32 assetHash, uint256 verifiedSupply, uint8 anomalyType)",
+    "event VerificationResultUpdated(string indexed assetId, string originChain, uint8 score)",
+    "event AnomalyDetected(string indexed assetId, string originChain, uint8 anomalyType, uint256 severity)"
+]

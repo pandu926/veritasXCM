@@ -161,11 +161,12 @@ contract XcmOracleTest is Test {
         oracle.queryAssetState(9999, "aDOT");
     }
 
-    // ─── Full Flow: Dispatch → Report → Query ────────────────────────
+    // ─── Full Flow: Dispatch -> Report -> Query ────────────────────────
 
     function test_fullFlow_dispatchThenReport() public {
         // 1. Owner dispatches query (XCM message sent to parachain)
         oracle.dispatchAssetQuery(2000, "aDOT");
+        assertTrue(oracle.queryDispatched(2000, "aDOT"));
 
         // 2. Reporter reports response data (simulates XCM response)
         bytes32 hash = keccak256("aDOT_state");
@@ -173,7 +174,10 @@ contract XcmOracleTest is Test {
         vm.prank(reporter);
         oracle.reportAssetState(2000, "aDOT", 50_000 ether, minter, hash);
 
-        // 3. Anyone can query cached state
+        // 3. queryDispatched should be cleared after report
+        assertFalse(oracle.queryDispatched(2000, "aDOT"));
+
+        // 4. Anyone can query cached state
         IXcmOracle.AssetState memory state = oracle.queryAssetState(2000, "aDOT");
         assertTrue(state.exists);
         assertEq(state.totalSupply, 50_000 ether);

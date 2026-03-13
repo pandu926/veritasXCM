@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
-   VeritasXCM — Frontend Application
+/* ===================================================================
+   VeritasXCM -- Frontend Application
    Web3 Integration for Paseo Testnet
-   ═══════════════════════════════════════════════════════════════ */
+   =================================================================== */
 
 // Use local proxy on localhost to avoid CORS, direct RPC otherwise
 const DIRECT_RPC = "https://eth-asset-hub-paseo.dotters.network";
@@ -9,8 +9,8 @@ const RPC_URL =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? window.location.origin + "/rpc"
     : DIRECT_RPC;
-const REGISTRY_ADDRESS = "0x107e8156A1301e03F8Cf05DE20dD4E89e451F910";
-const VERIFIER_ADDRESS = "0x6a141914Db10C0D3ccc00D5F9b970450f38F5863";
+const REGISTRY_ADDRESS = "0x9A340E7eeDA37623556A566473648365dfe390E1";
+const VERIFIER_ADDRESS = "0xBb1Df6990CCCd16c32939c8E30fb38A9D2cFC820";
 const PASEO_CHAIN_ID = 420420417;
 
 const REGISTRY_ABI = [
@@ -21,13 +21,13 @@ const VERIFIER_ABI = [
   "function verifyAsset(string calldata assetId, string calldata originChain, uint256 amount) external",
 ];
 
-// ─── Variables ───────────────────────────────────────────────
+// --- Variables ---
 const readOnlyProvider = new ethers.JsonRpcProvider(RPC_URL);
 let provider;
 let signer;
 let userAddress;
 
-// Pre-fill history with actual on-chain test data we just performed
+// Pre-fill history with actual on-chain test data
 const verificationHistory = [
   {
     assetId: "xcDOT",
@@ -35,7 +35,7 @@ const verificationHistory = [
     score: 60,
     isVerified: false,
     tx: "0x3c5aa9...7758",
-    url: "https://paseo.subscan.io", // Placeholder explorer
+    url: "https://paseo.subscan.io",
   },
   {
     assetId: "aDOT",
@@ -47,7 +47,14 @@ const verificationHistory = [
   },
 ];
 
-// ─── Wallet Connection ───────────────────────────────────────
+// --- Utility: Escape HTML to prevent XSS ---
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+// --- Wallet Connection ---
 async function connectWallet() {
   if (typeof window.ethereum !== "undefined") {
     try {
@@ -84,8 +91,7 @@ async function connectWallet() {
       document.getElementById("connectedState").style.display = "flex";
       document.getElementById("statusText").innerText =
         userAddress.substring(0, 6) + "..." + userAddress.substring(38);
-    } catch (error) {
-      console.error("Wallet connection failed:", error);
+    } catch (_error) {
       showError("Connection failed. Please check MetaMask console.");
     }
   } else {
@@ -95,7 +101,7 @@ async function connectWallet() {
   }
 }
 
-// ─── Show Error in UI ────────────────────────────────────────
+// --- Show Error in UI ---
 function showError(msg) {
   document.getElementById("resultEmpty").style.display = "none";
   const content = document.getElementById("resultContent");
@@ -108,26 +114,28 @@ function showError(msg) {
 
   const badge = document.getElementById("resultBadge");
   badge.className = "result-badge suspicious";
-  document.getElementById("badgeIcon").textContent = "✕";
+  document.getElementById("badgeIcon").textContent = "X";
   document.getElementById("badgeText").textContent = "ERROR";
 
   document.getElementById("resultMessage").textContent = msg;
   document.getElementById("txHashLink").textContent = "";
 }
 
-// ─── Quick Fill ──────────────────────────────────────────────
-function quickFill(assetId, chain, amount) {
+// --- Quick Fill (receives event explicitly) ---
+function quickFill(assetId, chain, amount, evt) {
   document.getElementById("assetId").value = assetId;
   document.getElementById("originChain").value = chain;
   document.getElementById("amount").value = amount;
 
-  document.querySelectorAll(".quick-btn").forEach((btn) => {
+  document.querySelectorAll(".quick-btn").forEach(function (btn) {
     btn.style.borderColor = "";
   });
-  event.currentTarget.style.borderColor = "var(--pink)";
+  if (evt && evt.currentTarget) {
+    evt.currentTarget.style.borderColor = "var(--pink)";
+  }
 }
 
-// ─── Handle Read State (No Tx) ───────────────────────────────
+// --- Handle Read State (No Tx) ---
 async function handleReadState() {
   const assetId = document.getElementById("assetId").value.trim();
   const originChain = document.getElementById("originChain").value.trim();
@@ -137,7 +145,6 @@ async function handleReadState() {
     return;
   }
 
-  // Show loading text in button
   const btn = document.querySelector(
     '.btn-connect[onclick="handleReadState()"]',
   );
@@ -146,9 +153,6 @@ async function handleReadState() {
   btn.disabled = true;
 
   try {
-    console.log(
-      `Fetching state for ${assetId} on ${originChain} via ${RPC_URL}...`,
-    );
     const registry = new ethers.Contract(
       REGISTRY_ADDRESS,
       REGISTRY_ABI,
@@ -156,7 +160,6 @@ async function handleReadState() {
     );
     const result = await registry.getVerificationResult(assetId, originChain);
 
-    // result is struct: { score, anomalyType, verifiedAt, proof }
     const score = Number(result.score);
     const anomalyType = Number(result.anomalyType);
     const verifiedAt = Number(result.verifiedAt);
@@ -179,7 +182,6 @@ async function handleReadState() {
       "Read from Paseo RPC via readOnlyProvider",
     );
   } catch (error) {
-    console.error("RPC Read Error:", error);
     if (error.message && error.message.includes("CORS")) {
       showError(
         "CORS Error: The Paseo RPC node blocked the connection. See console.",
@@ -195,7 +197,7 @@ async function handleReadState() {
   }
 }
 
-// ─── Handle Verification (Tx Submit) ─────────────────────────
+// --- Handle Verification (Tx Submit) ---
 async function handleVerify(e) {
   e.preventDefault();
 
@@ -206,10 +208,24 @@ async function handleVerify(e) {
 
   const assetId = document.getElementById("assetId").value.trim();
   const originChain = document.getElementById("originChain").value.trim();
-  const amount = parseInt(document.getElementById("amount").value);
+  const amountRaw = document.getElementById("amount").value.trim();
 
-  if (!assetId || !originChain || !amount) {
+  if (!assetId || !originChain || !amountRaw) {
     showError("Please enter all fields.");
+    return;
+  }
+
+  // Use BigInt for uint256 precision
+  let amount;
+  try {
+    amount = BigInt(amountRaw);
+  } catch (_e) {
+    showError("Invalid amount. Please enter a valid number.");
+    return;
+  }
+
+  if (amount <= 0n) {
+    showError("Amount must be greater than zero.");
     return;
   }
 
@@ -225,15 +241,12 @@ async function handleVerify(e) {
       signer,
     );
 
-    console.log("Submitting transaction to Paseo...");
     const tx = await verifier.verifyAsset(assetId, originChain, amount);
-    console.log("Tx Hash:", tx.hash);
 
     // Wait for confirmation
     await tx.wait(1);
-    console.log("Tx Confirmed!");
 
-    // Read immediately after using proxy provider
+    // Read immediately after using read-only provider
     const registry = new ethers.Contract(
       REGISTRY_ADDRESS,
       REGISTRY_ABI,
@@ -246,9 +259,8 @@ async function handleVerify(e) {
 
     displayResult(score, assetId, originChain, verifiedAt, anomalyType, tx.hash);
     addToHistory(assetId, originChain, score, tx.hash);
-  } catch (error) {
-    console.error("Transaction Error:", error);
-    showError("Verification failed. See console for details.");
+  } catch (_error) {
+    showError("Verification failed. Please try again.");
   } finally {
     btn.querySelector(".btn-verify__text").style.display = "inline";
     btn.querySelector(".btn-verify__loading").style.display = "none";
@@ -256,7 +268,7 @@ async function handleVerify(e) {
   }
 }
 
-// ─── Display Result ──────────────────────────────────────────
+// --- Display Result ---
 function displayResult(
   score,
   assetId,
@@ -281,35 +293,30 @@ function displayResult(
 
   badge.className = "result-badge";
 
-  // Logic matching contract
-  let isVerified = score >= 70;
-
   if (score >= 90) {
     badge.classList.add("verified");
-    badgeIcon.textContent = "✓";
+    badgeIcon.textContent = "V";
     badgeText.textContent = "HIGH CONFIDENCE";
     msgEl.textContent =
       "Asset perfectly matches supply. Fully verified via XCM.";
   } else if (score >= 70) {
     badge.classList.add("verified");
-    badgeIcon.textContent = "✓";
+    badgeIcon.textContent = "V";
     badgeText.textContent = "VERIFIED";
     msgEl.textContent =
       "Asset acceptable, minor anomalies detected but within normal variance.";
   } else if (score >= 50) {
     badge.classList.add("uncertain");
-    badgeIcon.textContent = "⚠";
+    badgeIcon.textContent = "!";
     badgeText.textContent = "UNCERTAIN";
     msgEl.textContent =
       "Major discrepancies in supply or scoring. Caution advised.";
-    isVerified = false;
   } else {
     badge.classList.add("suspicious");
-    badgeIcon.textContent = "✕";
+    badgeIcon.textContent = "X";
     badgeText.textContent = "SUSPICIOUS";
     msgEl.textContent =
       "ALERT: Suspicious asset detected. High risk of counterfeit.";
-    isVerified = false;
   }
 
   // Mapping anomalyType
@@ -320,19 +327,21 @@ function displayResult(
     3: "Unwhitelisted Minter",
   };
 
-  document.getElementById("txHashLink").textContent =
-    `Ref: ${txHashOrMsg.substring(0, 25)}...`;
-  document.getElementById("detailAsset").textContent = assetId;
-  document.getElementById("detailOrigin").textContent = chain;
+  const safeRef = escapeHtml(
+    typeof txHashOrMsg === "string" ? txHashOrMsg.substring(0, 25) + "..." : "",
+  );
+  document.getElementById("txHashLink").textContent = "Ref: " + safeRef;
+  document.getElementById("detailAsset").textContent = escapeHtml(assetId);
+  document.getElementById("detailOrigin").textContent = escapeHtml(chain);
 
   // Format verifiedAt timestamp
-  let formattedTime = "Unknown";
+  var formattedTime = "Unknown";
   try {
     if (verifiedAt > 0) {
-      const date = new Date(verifiedAt * 1000);
+      var date = new Date(verifiedAt * 1000);
       formattedTime = date.toLocaleString();
     }
-  } catch (e) {
+  } catch (_e) {
     formattedTime = String(verifiedAt);
   }
 
@@ -341,13 +350,13 @@ function displayResult(
     anomalyMap[anomalyType] || "Unknown";
 }
 
-// ─── Score Animation ─────────────────────────────────────────
+// --- Score Animation ---
 function animateScore(targetScore) {
   const ring = document.getElementById("scoreRingFill");
   const valueEl = document.getElementById("scoreValue");
   const circumference = 2 * Math.PI * 70;
 
-  let color;
+  var color;
   if (targetScore >= 90) color = "var(--safe)";
   else if (targetScore >= 70) color = "var(--warn)";
   else if (targetScore >= 50) color = "var(--uncertain)";
@@ -356,35 +365,33 @@ function animateScore(targetScore) {
   ring.style.stroke = color;
   valueEl.style.color = color;
 
-  const offset = circumference - (targetScore / 100) * circumference;
+  var offset = circumference - (targetScore / 100) * circumference;
   ring.style.strokeDashoffset = circumference;
-  requestAnimationFrame(() => {
+  requestAnimationFrame(function () {
     ring.style.strokeDashoffset = offset;
   });
 
-  let current = 0;
-  const duration = 1200;
-  const start = performance.now();
+  var duration = 1200;
+  var start = performance.now();
 
   function tick(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    current = Math.round(eased * targetScore);
-    valueEl.textContent = current;
+    var elapsed = now - start;
+    var progress = Math.min(elapsed / duration, 1);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    valueEl.textContent = Math.round(eased * targetScore);
     if (progress < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
 
-// ─── History ─────────────────────────────────────────────────
+// --- History ---
 function addToHistory(assetId, chain, score, txHash) {
-  const isVerified = score >= 70;
-  const entry = {
-    assetId,
-    chain,
-    score,
-    isVerified,
+  var isVerified = score >= 70;
+  var entry = {
+    assetId: assetId,
+    chain: chain,
+    score: score,
+    isVerified: isVerified,
     tx: txHash.substring(0, 10) + "..." + txHash.substring(60),
   };
 
@@ -394,49 +401,76 @@ function addToHistory(assetId, chain, score, txHash) {
 }
 
 function renderHistory() {
-  const tbody = document.getElementById("historyBody");
-  tbody.innerHTML = verificationHistory
-    .map((entry) => {
-      const scoreClass =
-        entry.score >= 90
-          ? "high"
-          : entry.score >= 70
-            ? "medium"
-            : entry.score >= 50
-              ? "low"
-              : "critical";
-      const statusClass = entry.isVerified ? "verified" : "rejected";
-      const statusText = entry.isVerified ? "✓ Verified" : "✕ Rejected";
+  var tbody = document.getElementById("historyBody");
+  // Clear existing content safely
+  tbody.textContent = "";
 
-      return `<tr>
-            <td><strong>${entry.assetId}</strong></td>
-            <td>${entry.chain}</td>
-            <td><span class="score-badge ${scoreClass}">${entry.score}</span></td>
-            <td><span class="status-tag ${statusClass}">${statusText}</span></td>
-            <td style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;">${entry.tx || "Read Only"}</td>
-        </tr>`;
-    })
-    .join("");
+  verificationHistory.forEach(function (entry) {
+    var scoreClass =
+      entry.score >= 90
+        ? "high"
+        : entry.score >= 70
+          ? "medium"
+          : entry.score >= 50
+            ? "low"
+            : "critical";
+    var statusClass = entry.isVerified ? "verified" : "rejected";
+    var statusText = entry.isVerified ? "Verified" : "Rejected";
+
+    var tr = document.createElement("tr");
+
+    var tdAsset = document.createElement("td");
+    var strong = document.createElement("strong");
+    strong.textContent = entry.assetId;
+    tdAsset.appendChild(strong);
+
+    var tdChain = document.createElement("td");
+    tdChain.textContent = entry.chain;
+
+    var tdScore = document.createElement("td");
+    var scoreBadge = document.createElement("span");
+    scoreBadge.className = "score-badge " + scoreClass;
+    scoreBadge.textContent = entry.score;
+    tdScore.appendChild(scoreBadge);
+
+    var tdStatus = document.createElement("td");
+    var statusTag = document.createElement("span");
+    statusTag.className = "status-tag " + statusClass;
+    statusTag.textContent = statusText;
+    tdStatus.appendChild(statusTag);
+
+    var tdTx = document.createElement("td");
+    tdTx.style.cssText = "color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;";
+    tdTx.textContent = entry.tx || "Read Only";
+
+    tr.appendChild(tdAsset);
+    tr.appendChild(tdChain);
+    tr.appendChild(tdScore);
+    tr.appendChild(tdStatus);
+    tr.appendChild(tdTx);
+
+    tbody.appendChild(tr);
+  });
 }
 
-// ─── Initialize ──────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
+// --- Initialize ---
+document.addEventListener("DOMContentLoaded", function () {
   animateStats();
-  renderHistory(); // load initial history
+  renderHistory();
 });
 
 function animateStats() {
-  document.querySelectorAll(".stat-card__value").forEach((el) => {
+  document.querySelectorAll(".stat-card__value").forEach(function (el) {
     if (el.textContent === "LIVE") return;
-    const target = parseInt(el.textContent);
+    var target = parseInt(el.textContent);
     if (isNaN(target)) return;
     el.textContent = "0";
-    const duration = 1500;
-    const start = performance.now();
+    var duration = 1500;
+    var start = performance.now();
 
     function tick(now) {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
+      var progress = Math.min((now - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
       el.textContent = Math.round(eased * target);
       if (progress < 1) requestAnimationFrame(tick);
     }

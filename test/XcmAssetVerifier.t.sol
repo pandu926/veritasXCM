@@ -6,6 +6,7 @@ import "../src/XcmAssetVerifier.sol";
 import "../src/AssetRegistry.sol";
 import "../src/MockVerifierPrecompile.sol";
 import "../src/MockXcmOracle.sol";
+import "../src/VerifierBase.sol";
 
 contract XcmAssetVerifierTest is Test {
     XcmAssetVerifier public verifier;
@@ -40,14 +41,18 @@ contract XcmAssetVerifierTest is Test {
         registry.setVerifier(address(verifier));
 
         // Whitelist default minters from MockXcmOracle seed data
-        verifier.setMinterWhitelist(address(0xACA1), true);  // Acala aDOT minter
-        verifier.setMinterWhitelist(address(0x1B7C), true);  // Interlay iBTC minter
-        verifier.setMinterWhitelist(address(0xBF05), true);  // Bifrost vDOT minter
+        verifier.setMinterWhitelist(address(0xACA1), true);
+        verifier.setMinterWhitelist(address(0x1B7C), true);
+        verifier.setMinterWhitelist(address(0xBF05), true);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    function _skipCooldown() internal {
+        skip(verifier.VERIFICATION_COOLDOWN_PERIOD() + 1);
+    }
+
+    // ===================================================================
     // END-TO-END HAPPY PATH
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_e2e_verifyAsset_aDOT_firstCheck() public {
         // First verification: no previous snapshot
@@ -87,17 +92,16 @@ contract XcmAssetVerifierTest is Test {
         assertEq(score, 60);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // SUBSEQUENT VERIFICATION (with history)
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_e2e_secondVerification_sameData() public {
         // First verification
         verifier.verifyAsset("aDOT", "acala", 1000);
 
-        // Second verification — supply unchanged, hash same
-        // hash=true, supply=true, minter=true, history=1
-        // Score: 30 + 25 + 30 + 15*1/10 = 86
+        // Second verification -- supply unchanged, hash same
+        _skipCooldown();
         (, uint8 score2,) = verifier.verifyAsset("aDOT", "acala", 2000);
         assertEq(score2, 86);
     }
@@ -108,20 +112,22 @@ contract XcmAssetVerifierTest is Test {
 
         // Verify 9 more times
         for (uint i = 0; i < 9; i++) {
+            _skipCooldown();
             verifier.verifyAsset("aDOT", "acala", 100);
         }
 
         // 11th verification: history=10 (capped)
         // Score: 30 + 25 + 30 + 15 = 100
+        _skipCooldown();
         (, uint8 score11,) = verifier.verifyAsset("aDOT", "acala", 100);
 
         assertGt(score11, score1);
         assertEq(score11, 100);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // ANOMALY DETECTION
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_e2e_anomalyDetection_supplySpike() public {
         // First verification (establishes baseline)
@@ -130,7 +136,8 @@ contract XcmAssetVerifierTest is Test {
         // Inject 10x supply spike via oracle
         oracle.injectAnomaly(2000, "aDOT", 500_000 ether);
 
-        // Second verification — should detect anomaly
+        // Second verification -- should detect anomaly
+        _skipCooldown();
         (bool isVerified, uint8 score, string memory message) =
             verifier.verifyAsset("aDOT", "acala", 1000);
 
@@ -142,30 +149,31 @@ contract XcmAssetVerifierTest is Test {
     function test_e2e_anomalyDetection_registryStoresAnomaly() public {
         verifier.verifyAsset("aDOT", "acala", 1000);
         oracle.injectAnomaly(2000, "aDOT", 500_000 ether);
+        _skipCooldown();
         verifier.verifyAsset("aDOT", "acala", 1000);
 
         AssetRegistry.VerificationResult memory result =
             registry.getVerificationResult("aDOT", "acala");
-        assertGt(result.anomalyType, 0); // Should have anomaly type set
+        assertGt(result.anomalyType, 0);
         assertLe(result.score, 20);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // INPUT VALIDATION
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_verifyAsset_emptyAssetId_reverts() public {
-        vm.expectRevert(XcmAssetVerifier.InvalidAssetId.selector);
+        vm.expectRevert(VerifierBase.InvalidAssetId.selector);
         verifier.verifyAsset("", "acala", 1000);
     }
 
     function test_verifyAsset_emptyOriginChain_reverts() public {
-        vm.expectRevert(XcmAssetVerifier.InvalidOriginChain.selector);
+        vm.expectRevert(VerifierBase.InvalidOriginChain.selector);
         verifier.verifyAsset("aDOT", "", 1000);
     }
 
     function test_verifyAsset_zeroAmount_reverts() public {
-        vm.expectRevert(XcmAssetVerifier.InvalidAmount.selector);
+        vm.expectRevert(VerifierBase.InvalidAmount.selector);
         verifier.verifyAsset("aDOT", "acala", 0);
     }
 
@@ -183,13 +191,37 @@ contract XcmAssetVerifierTest is Test {
         verifier.verifyAsset("FAKE", "acala", 1000);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    function test_verifyAsset_stringTooLong_reverts() public {
+        string memory longStr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 67 chars
+        vm.expectRevert(VerifierBase.StringTooLong.selector);
+        verifier.verifyAsset(longStr, "acala", 1000);
+    }
+
+    // ===================================================================
+    // COOLDOWN TESTS
+    // ===================================================================
+
+    function test_verifyAsset_cooldown_reverts() public {
+        verifier.verifyAsset("aDOT", "acala", 1000);
+
+        vm.expectRevert(VerifierBase.VerificationCooldown.selector);
+        verifier.verifyAsset("aDOT", "acala", 1000);
+    }
+
+    function test_verifyAsset_afterCooldown_works() public {
+        verifier.verifyAsset("aDOT", "acala", 1000);
+        _skipCooldown();
+        (bool isVerified,,) = verifier.verifyAsset("aDOT", "acala", 1000);
+        assertTrue(isVerified);
+    }
+
+    // ===================================================================
     // PAUSE MECHANISM
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_pause_works() public {
         verifier.pause();
-        vm.expectRevert(XcmAssetVerifier.ContractPaused.selector);
+        vm.expectRevert(VerifierBase.ContractPaused.selector);
         verifier.verifyAsset("aDOT", "acala", 1000);
     }
 
@@ -200,36 +232,46 @@ contract XcmAssetVerifierTest is Test {
         assertTrue(isVerified);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // BATCH VERIFICATION
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_batchVerify_multipleChains() public {
-        XcmAssetVerifier.VerificationRequest[] memory requests =
-            new XcmAssetVerifier.VerificationRequest[](3);
-        requests[0] = XcmAssetVerifier.VerificationRequest("aDOT", "acala", 1000);
-        requests[1] = XcmAssetVerifier.VerificationRequest("iBTC", "interlay", 100);
-        requests[2] = XcmAssetVerifier.VerificationRequest("xcDOT", "moonbeam", 500);
+        VerifierBase.VerificationRequest[] memory requests =
+            new VerifierBase.VerificationRequest[](3);
+        requests[0] = VerifierBase.VerificationRequest("aDOT", "acala", 1000);
+        requests[1] = VerifierBase.VerificationRequest("iBTC", "interlay", 100);
+        requests[2] = VerifierBase.VerificationRequest("xcDOT", "moonbeam", 500);
 
-        XcmAssetVerifier.VerificationResponse[] memory responses =
+        VerifierBase.VerificationResponse[] memory responses =
             verifier.verifyBatchAssets(requests);
 
         assertEq(responses.length, 3);
-        assertTrue(responses[0].isVerified);   // aDOT: whitelisted minter
-        assertTrue(responses[1].isVerified);   // iBTC: whitelisted minter
-        assertFalse(responses[2].isVerified);  // xcDOT: minter NOT whitelisted
+        assertTrue(responses[0].isVerified);
+        assertTrue(responses[1].isVerified);
+        assertFalse(responses[2].isVerified);
     }
 
     function test_batchVerify_emptyBatch_reverts() public {
-        XcmAssetVerifier.VerificationRequest[] memory requests =
-            new XcmAssetVerifier.VerificationRequest[](0);
-        vm.expectRevert(XcmAssetVerifier.EmptyBatch.selector);
+        VerifierBase.VerificationRequest[] memory requests =
+            new VerifierBase.VerificationRequest[](0);
+        vm.expectRevert(VerifierBase.EmptyBatch.selector);
         verifier.verifyBatchAssets(requests);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    function test_batchVerify_tooLarge_reverts() public {
+        VerifierBase.VerificationRequest[] memory requests =
+            new VerifierBase.VerificationRequest[](21);
+        for (uint256 i = 0; i < 21; i++) {
+            requests[i] = VerifierBase.VerificationRequest("aDOT", "acala", 100);
+        }
+        vm.expectRevert(VerifierBase.BatchTooLarge.selector);
+        verifier.verifyBatchAssets(requests);
+    }
+
+    // ===================================================================
     // REGISTRY INTEGRATION
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_registry_storedAfterVerification() public {
         verifier.verifyAsset("aDOT", "acala", 1000);
@@ -242,9 +284,9 @@ contract XcmAssetVerifierTest is Test {
         assertTrue(registry.isAssetVerified("aDOT", "acala"));
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // EVENT TESTS
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_event_AssetVerified() public {
         vm.expectEmit(true, true, false, true);
@@ -258,9 +300,9 @@ contract XcmAssetVerifierTest is Test {
         verifier.verifyAsset("aDOT", "acala", 1000);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
     // ADMIN TESTS
-    // ═══════════════════════════════════════════════════════════════════
+    // ===================================================================
 
     function test_setOracle_byOwner() public {
         MockXcmOracle newOracle = new MockXcmOracle();
@@ -269,13 +311,13 @@ contract XcmAssetVerifierTest is Test {
     }
 
     function test_setOracle_zeroAddress_reverts() public {
-        vm.expectRevert(XcmAssetVerifier.ZeroAddress.selector);
+        vm.expectRevert(VerifierBase.ZeroAddress.selector);
         verifier.setOracle(address(0));
     }
 
     function test_setOracle_byNonOwner_reverts() public {
         vm.prank(randomUser);
-        vm.expectRevert(XcmAssetVerifier.Unauthorized.selector);
+        vm.expectRevert(VerifierBase.Unauthorized.selector);
         verifier.setOracle(address(1));
     }
 }

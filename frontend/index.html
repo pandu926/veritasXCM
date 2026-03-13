@@ -17,7 +17,10 @@
     />
     <link rel="stylesheet" href="style.css" />
     <!-- Ethers.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"
+            integrity="sha384-u0NcfwGT0MUYq60cVWPN34m99JhiJTCRG+0JOgmAQ++pTQ4w6AKkwhA9Wj/VjNRi"
+            crossorigin="anonymous"></script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://eth-asset-hub-paseo.dotters.network;" />
     <style>
       .btn-connect {
         background: rgba(255, 255, 255, 0.05);
@@ -146,25 +149,25 @@
         <div class="quick-fill">
           <button
             class="quick-btn quick-btn--safe"
-            onclick="quickFill('aDOT', 'acala', 1000)"
+            onclick="quickFill('aDOT', 'acala', 1000, event)"
           >
             <span class="quick-btn__dot safe"></span>aDOT / Acala
           </button>
           <button
             class="quick-btn quick-btn--safe"
-            onclick="quickFill('iBTC', 'interlay', 100)"
+            onclick="quickFill('iBTC', 'interlay', 100, event)"
           >
             <span class="quick-btn__dot safe"></span>iBTC / Interlay
           </button>
           <button
             class="quick-btn quick-btn--warn"
-            onclick="quickFill('vDOT', 'bifrost', 500)"
+            onclick="quickFill('vDOT', 'bifrost', 500, event)"
           >
             <span class="quick-btn__dot warn"></span>vDOT / Bifrost
           </button>
           <button
             class="quick-btn quick-btn--danger"
-            onclick="quickFill('xcDOT', 'moonbeam', 1000)"
+            onclick="quickFill('xcDOT', 'moonbeam', 1000, event)"
           >
             <span class="quick-btn__dot danger"></span>xcDOT / Moonbeam
           </button>
@@ -324,7 +327,7 @@
         XCM + PolkaVM + Rust
       </p>
       <p class="footer__sub">
-        Live on Paseo Asset Hub • 0x254244D6AE0aA428aEF063f84D65968a087A1D8d
+        Live on Paseo Asset Hub
       </p>
     </footer>
 

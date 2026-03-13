@@ -39,12 +39,10 @@ contract MockVerifierPrecompile is IVerifierPrecompile {
         uint256 previousSupply,
         uint256 thresholdPct
     ) external pure override returns (bool isAnomaly, uint8 anomalyType, uint8 severity) {
-        // Handle zero previous supply
         if (previousSupply == 0) {
             return (false, ANOMALY_NONE, 0);
         }
 
-        // Calculate percentage change
         uint256 changePct;
         bool isIncrease;
 
@@ -56,7 +54,6 @@ contract MockVerifierPrecompile is IVerifierPrecompile {
             changePct = ((previousSupply - currentSupply) * 100) / previousSupply;
         }
 
-        // Check against threshold
         if (isIncrease && changePct >= thresholdPct) {
             uint8 sev = uint8(_min(changePct / 2, 100));
             return (true, ANOMALY_SUPPLY_SPIKE, sev);
@@ -77,27 +74,10 @@ contract MockVerifierPrecompile is IVerifierPrecompile {
         bool hashOk,
         uint256 historyCount
     ) external pure override returns (uint8 score) {
-        uint256 total = 0;
-
-        if (supplyOk) total += SUPPLY_WEIGHT;
-        if (minterOk) total += MINTER_WEIGHT;
-        if (hashOk) total += HASH_WEIGHT;
-
-        // History factor: scales from 0 to HISTORY_WEIGHT over MAX_HISTORY verifications
-        uint256 histCapped = _min(historyCount, MAX_HISTORY);
-        total += (uint256(HISTORY_WEIGHT) * histCapped) / MAX_HISTORY;
-
-        return uint8(_min(total, 100));
+        return _calculateScoreInternal(supplyOk, minterOk, hashOk, historyCount);
     }
 
     /// @notice Calculate score with anomaly cap applied
-    /// @param supplyOk Whether supply check passed
-    /// @param minterOk Whether minter check passed
-    /// @param hashOk Whether hash check passed
-    /// @param historyCount Number of successful verifications
-    /// @param hasAnomaly Whether anomaly was detected
-    /// @param anomalyType Type of anomaly detected
-    /// @return score Final capped score
     function calculateScoreWithAnomaly(
         bool supplyOk,
         bool minterOk,
@@ -106,20 +86,10 @@ contract MockVerifierPrecompile is IVerifierPrecompile {
         bool hasAnomaly,
         uint8 anomalyType
     ) external pure returns (uint8 score) {
-        // Base score
-        uint256 total = 0;
-        if (supplyOk) total += SUPPLY_WEIGHT;
-        if (minterOk) total += MINTER_WEIGHT;
-        if (hashOk) total += HASH_WEIGHT;
-
-        uint256 histCapped = _min(historyCount, MAX_HISTORY);
-        total += (uint256(HISTORY_WEIGHT) * histCapped) / MAX_HISTORY;
-
-        uint8 baseScore = uint8(_min(total, 100));
+        uint8 baseScore = _calculateScoreInternal(supplyOk, minterOk, hashOk, historyCount);
 
         if (!hasAnomaly) return baseScore;
 
-        // Apply cap
         uint8 maxScore;
         if (anomalyType == ANOMALY_SUPPLY_SPIKE) {
             maxScore = CAP_SUPPLY_SPIKE;
@@ -133,6 +103,24 @@ contract MockVerifierPrecompile is IVerifierPrecompile {
     }
 
     // ─── Internal Helpers ────────────────────────────────────────────
+
+    function _calculateScoreInternal(
+        bool supplyOk,
+        bool minterOk,
+        bool hashOk,
+        uint256 historyCount
+    ) internal pure returns (uint8) {
+        uint256 total = 0;
+
+        if (supplyOk) total += SUPPLY_WEIGHT;
+        if (minterOk) total += MINTER_WEIGHT;
+        if (hashOk) total += HASH_WEIGHT;
+
+        uint256 histCapped = _min(historyCount, MAX_HISTORY);
+        total += (uint256(HISTORY_WEIGHT) * histCapped) / MAX_HISTORY;
+
+        return uint8(_min(total, 100));
+    }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;

@@ -6,10 +6,15 @@ pragma solidity ^0.8.20;
 /// @dev Queryable by any DeFi protocol in the Polkadot ecosystem
 contract AssetRegistry {
     // ─── Custom Errors ───────────────────────────────────────────────
-    error Unauthorized();
+    error NotOwner();
+    error NotVerifier();
     error ZeroAddress();
     error InvalidAssetId();
     error InvalidOriginChain();
+    error StringTooLong();
+
+    // ─── Constants ──────────────────────────────────────────────────
+    uint256 public constant MAX_STRING_LEN = 64;
 
     // ─── Structs ─────────────────────────────────────────────────────
     /// @notice Verification result for a cross-chain asset
@@ -35,12 +40,12 @@ contract AssetRegistry {
 
     // ─── Modifiers ───────────────────────────────────────────────────
     modifier onlyOwner() {
-        if (msg.sender != owner) revert Unauthorized();
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
     modifier onlyVerifier() {
-        if (msg.sender != authorizedVerifier) revert Unauthorized();
+        if (msg.sender != authorizedVerifier) revert NotVerifier();
         _;
     }
 
@@ -75,8 +80,12 @@ contract AssetRegistry {
         uint8 anomalyType,
         bytes32 proof
     ) external onlyVerifier {
-        if (bytes(assetId).length == 0) revert InvalidAssetId();
-        if (bytes(originChain).length == 0) revert InvalidOriginChain();
+        uint256 assetLen = bytes(assetId).length;
+        uint256 chainLen = bytes(originChain).length;
+        if (assetLen == 0) revert InvalidAssetId();
+        if (assetLen > MAX_STRING_LEN) revert StringTooLong();
+        if (chainLen == 0) revert InvalidOriginChain();
+        if (chainLen > MAX_STRING_LEN) revert StringTooLong();
 
         _assetVerifications[assetId][originChain] = VerificationResult({
             score: score,

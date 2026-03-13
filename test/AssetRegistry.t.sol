@@ -45,7 +45,7 @@ contract AssetRegistryTest is Test {
 
     function test_setVerifier_byNonOwner_reverts() public {
         vm.prank(randomUser);
-        vm.expectRevert(AssetRegistry.Unauthorized.selector);
+        vm.expectRevert(AssetRegistry.NotOwner.selector);
         registry.setVerifier(makeAddr("attacker"));
     }
 
@@ -71,7 +71,7 @@ contract AssetRegistryTest is Test {
 
     function test_setVerificationResult_byRandom_reverts() public {
         vm.prank(randomUser);
-        vm.expectRevert(AssetRegistry.Unauthorized.selector);
+        vm.expectRevert(AssetRegistry.NotVerifier.selector);
         registry.setVerificationResult("aDOT", "acala", 94, 0, bytes32(0));
     }
 

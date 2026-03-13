@@ -3,37 +3,25 @@ pragma solidity ^0.8.20;
 
 import "./AssetRegistry.sol";
 import "./IVerifierPrecompile.sol";
+import "./VerifierBase.sol";
 
 /// @title AssetVerifier
 /// @notice Core verifier contract for VeritasXCM — trustless cross-chain asset verification
 /// @dev Phase 2: Uses precompile for hash verification, anomaly detection, and score calculation.
-contract AssetVerifier {
-    // ─── Custom Errors ───────────────────────────────────────────────
-    error Unauthorized();
-    error InvalidAssetId();
-    error InvalidOriginChain();
-    error InvalidAmount();
-    error ContractPaused();
-    error EmptyBatch();
-    error ZeroAddress();
-
-    // ─── Constants ───────────────────────────────────────────────────
-    uint256 public constant ANOMALY_THRESHOLD_PCT = 200; // 200% supply change = anomaly
-
+contract AssetVerifier is VerifierBase {
     // ─── State Variables ─────────────────────────────────────────────
     AssetRegistry public immutable registry;
     IVerifierPrecompile public precompile;
-    address public immutable owner;
-    bool public paused;
 
     // ─── Asset Snapshot Storage ──────────────────────────────────────
     /// @notice Recorded state snapshot for an asset on its origin chain
     struct AssetSnapshot {
         uint256 supply;           // Total supply at last check
+        uint256 previousSupply;   // Previous supply for anomaly detection
         address minterAddress;    // Authorized minter address
         bytes32 stateHash;        // State hash at last check
         uint256 lastChecked;      // Timestamp of last check
-        uint32 verificationCount; // Number of successful verifications
+        uint256 verificationCount; // Number of successful verifications
     }
 
     /// @notice assetId => originChain => AssetSnapshot
@@ -41,19 +29,6 @@ contract AssetVerifier {
 
     /// @notice minterAddress => isWhitelisted
     mapping(address => bool) public whitelistedMinters;
-
-    // ─── Structs ─────────────────────────────────────────────────────
-    struct VerificationRequest {
-        string assetId;
-        string originChain;
-        uint256 amount;
-    }
-
-    struct VerificationResponse {
-        bool isVerified;
-        uint8 score;
-        string message;
-    }
 
     // ─── Events ──────────────────────────────────────────────────────
     event AssetVerified(
@@ -69,44 +44,16 @@ contract AssetVerifier {
         uint256 supply,
         bytes32 stateHash
     );
-    event PrecompileUpdated(address indexed oldPrecompile, address indexed newPrecompile);
-    event MinterWhitelisted(address indexed minter, bool status);
-    event ContractPausedEvent(address indexed by);
-    event ContractUnpausedEvent(address indexed by);
-
-    // ─── Modifiers ───────────────────────────────────────────────────
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert Unauthorized();
-        _;
-    }
-
-    modifier whenNotPaused() {
-        if (paused) revert ContractPaused();
-        _;
-    }
 
     // ─── Constructor ─────────────────────────────────────────────────
     /// @param _registryAddress Address of the deployed AssetRegistry contract
     /// @param _precompileAddress Address of the VerifierPrecompile (mock or real)
-    constructor(address _registryAddress, address _precompileAddress) {
+    constructor(address _registryAddress, address _precompileAddress) VerifierBase() {
         registry = AssetRegistry(_registryAddress);
         precompile = IVerifierPrecompile(_precompileAddress);
-        owner = msg.sender;
     }
 
     // ─── Admin Functions ─────────────────────────────────────────────
-
-    /// @notice Pause the contract (emergency circuit breaker)
-    function pause() external onlyOwner {
-        paused = true;
-        emit ContractPausedEvent(msg.sender);
-    }
-
-    /// @notice Unpause the contract
-    function unpause() external onlyOwner {
-        paused = false;
-        emit ContractUnpausedEvent(msg.sender);
-    }
 
     /// @notice Update the precompile address
     /// @param _newPrecompile New precompile contract address
@@ -126,7 +73,6 @@ contract AssetVerifier {
     }
 
     /// @notice Set asset snapshot data (simulates parachain data for Phase 2)
-    /// @dev In Phase 3, this will be replaced by XCM query responses
     /// @param assetId The asset identifier
     /// @param originChain The origin parachain
     /// @param supply Current total supply
@@ -139,10 +85,17 @@ contract AssetVerifier {
         address minter,
         bytes32 stateHash
     ) external onlyOwner {
-        if (bytes(assetId).length == 0) revert InvalidAssetId();
-        if (bytes(originChain).length == 0) revert InvalidOriginChain();
+        uint256 assetLen = bytes(assetId).length;
+        uint256 chainLen = bytes(originChain).length;
+        if (assetLen == 0) revert InvalidAssetId();
+        if (assetLen > MAX_STRING_LEN) revert StringTooLong();
+        if (chainLen == 0) revert InvalidOriginChain();
+        if (chainLen > MAX_STRING_LEN) revert StringTooLong();
+        if (minter == address(0)) revert ZeroAddress();
+        if (stateHash == bytes32(0)) revert InvalidAssetId(); // reuse error for invalid hash
 
         AssetSnapshot storage snapshot = assetSnapshots[assetId][originChain];
+        snapshot.previousSupply = snapshot.supply;
         snapshot.supply = supply;
         snapshot.minterAddress = minter;
         snapshot.stateHash = stateHash;
@@ -165,31 +118,31 @@ contract AssetVerifier {
         string memory originChain,
         uint256 amount
     ) public whenNotPaused returns (bool isVerified, uint8 score, string memory message) {
-        // ── Input Validation ──
-        if (bytes(assetId).length == 0) revert InvalidAssetId();
-        if (bytes(originChain).length == 0) revert InvalidOriginChain();
-        if (amount == 0) revert InvalidAmount();
+        _validateInputs(assetId, originChain, amount);
 
         AssetSnapshot storage snapshot = assetSnapshots[assetId][originChain];
 
-        // ── Route: Precompile (has snapshot) vs Mock (no snapshot) ──
-        uint8 anomalyType = 0;
+        // Enforce cooldown to prevent spam
         if (snapshot.lastChecked > 0) {
-            (isVerified, score, message, anomalyType) = _verifyViaPrecompile(assetId, originChain, snapshot);
-        } else {
-            (isVerified, score, message) = _mockVerify(assetId, originChain);
+            if (block.timestamp < snapshot.lastChecked + VERIFICATION_COOLDOWN_PERIOD) {
+                revert VerificationCooldown();
+            }
         }
 
-        // ── Store Result in Registry ──
-        bytes32 proof = keccak256(abi.encodePacked(assetId, originChain, amount, block.timestamp));
+        // Require snapshot — no mock fallback in production
+        uint8 anomalyType = 0;
+        (isVerified, score, message, anomalyType) = _verifyViaPrecompile(assetId, originChain, snapshot);
+
+        // Store result in registry
+        bytes32 proof = keccak256(abi.encodePacked(assetId, originChain, amount, block.number, block.timestamp));
         registry.setVerificationResult(assetId, originChain, score, anomalyType, proof);
 
-        // ── Update verification count ──
-        if (isVerified && snapshot.lastChecked > 0) {
+        // Update snapshot state
+        snapshot.lastChecked = block.timestamp;
+        if (isVerified) {
             snapshot.verificationCount++;
         }
 
-        // ── Emit Event ──
         emit AssetVerified(assetId, originChain, amount, score, isVerified);
 
         return (isVerified, score, message);
@@ -200,6 +153,7 @@ contract AssetVerifier {
         VerificationRequest[] memory requests
     ) external whenNotPaused returns (VerificationResponse[] memory responses) {
         if (requests.length == 0) revert EmptyBatch();
+        if (requests.length > MAX_BATCH_SIZE) revert BatchTooLarge();
 
         responses = new VerificationResponse[](requests.length);
 
@@ -227,19 +181,30 @@ contract AssetVerifier {
         string memory originChain,
         AssetSnapshot storage snapshot
     ) internal view returns (bool isVerified, uint8 score, string memory message, uint8 anomalyType) {
+        bool isFirstCheck = (snapshot.lastChecked == 0);
+
         // 1. Hash verification
         bytes32 currentHash = keccak256(abi.encodePacked(assetId, originChain, snapshot.supply));
-        bool hashOk = precompile.verifyHash(currentHash, snapshot.stateHash);
+        bool hashOk;
+        if (isFirstCheck) {
+            hashOk = true;
+        } else {
+            hashOk = precompile.verifyHash(currentHash, snapshot.stateHash);
+        }
 
-        // 2. Anomaly detection
-        bool isAnomaly;
-        uint8 _anomalyType;
-        (isAnomaly, _anomalyType,) = precompile.detectAnomaly(
-            snapshot.supply,
-            snapshot.supply, // In Phase 3, previous supply comes from XCM
-            ANOMALY_THRESHOLD_PCT
-        );
-        bool supplyOk = !isAnomaly;
+        // 2. Anomaly detection — use previousSupply instead of self-comparison
+        bool supplyOk = true;
+        if (!isFirstCheck && snapshot.previousSupply > 0) {
+            bool isAnomaly;
+            uint8 _anomalyType;
+            (isAnomaly, _anomalyType,) = precompile.detectAnomaly(
+                snapshot.supply,
+                snapshot.previousSupply,
+                ANOMALY_THRESHOLD_PCT
+            );
+            supplyOk = !isAnomaly;
+            if (isAnomaly) anomalyType = _anomalyType;
+        }
 
         // 3. Minter check
         bool minterOk = whitelistedMinters[snapshot.minterAddress];
@@ -252,54 +217,13 @@ contract AssetVerifier {
             snapshot.verificationCount
         );
 
-        // 5. Apply anomaly cap if needed
-        if (isAnomaly) {
-            anomalyType = _anomalyType;
-            if (_anomalyType == 1) { // SupplySpike
-                score = score < 20 ? score : 20;
-            } else if (_anomalyType == 2) { // SupplyDrop
-                score = score < 35 ? score : 35;
-            }
-        }
+        // 5. Apply anomaly cap
+        score = _applyAnomalyCap(score, anomalyType);
 
         // 6. Determine result
-        isVerified = score >= 70;
-
-        if (score >= 90) {
-            message = "Asset verified, high confidence";
-        } else if (score >= 70) {
-            message = "Asset likely safe, acceptable confidence";
-        } else if (score >= 50) {
-            message = "Asset uncertain, manual review recommended";
-        } else {
-            message = "ALERT: Suspicious asset detected. Do not accept.";
-        }
+        isVerified = score >= SCORE_VERIFIED;
+        message = _scoreToMessage(score);
 
         return (isVerified, score, message, anomalyType);
-    }
-
-    // ─── Internal: Mock Fallback ─────────────────────────────────────
-
-    /// @dev Mock verification for assets without snapshots (Phase 1 compatibility)
-    function _mockVerify(
-        string memory assetId,
-        string memory originChain
-    ) internal pure returns (bool isVerified, uint8 score, string memory message) {
-        bytes32 assetHash = keccak256(abi.encodePacked(assetId));
-        bytes32 chainHash = keccak256(abi.encodePacked(originChain));
-
-        if (assetHash == keccak256("aDOT") && chainHash == keccak256("acala")) {
-            return (true, 94, "Asset legitimate, high confidence");
-        }
-        if (assetHash == keccak256("iBTC") && chainHash == keccak256("interlay")) {
-            return (true, 88, "Asset likely safe, multiple positive indicators");
-        }
-        if (assetHash == keccak256("vDOT") && chainHash == keccak256("bifrost")) {
-            return (true, 75, "Liquid staking derivative, acceptable confidence");
-        }
-        if (assetHash == keccak256("xcDOT")) {
-            return (false, 12, "ALERT: Abnormal supply detected. Do not accept.");
-        }
-        return (false, 50, "Asset unknown or uncertain, manual review needed.");
     }
 }

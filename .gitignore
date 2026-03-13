@@ -26,6 +26,10 @@ Cargo.lock
 *.swo
 *~
 
+# Claude / AI agents
+.claude/
+.agent/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -34,7 +38,8 @@ Thumbs.db
 playwright-report/
 artifacts/
 test-results/
-
+xcm-asset-verifier-oracle.md
 # Project specific
 frontend/node_modules/
 frontend/dist/
+DEMO_SCRIPT.md

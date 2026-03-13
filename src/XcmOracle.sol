@@ -134,6 +134,9 @@ contract XcmOracle is IXcmOracle {
             exists: true
         });
 
+        // Clear dispatched flag now that data has arrived
+        queryDispatched[paraId][assetId] = false;
+
         emit AssetStateReported(paraId, assetId, totalSupply);
     }
 

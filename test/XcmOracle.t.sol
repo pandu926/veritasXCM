@@ -6,7 +6,7 @@ import "../src/XcmOracle.sol";
 import "../src/IXcm.sol";
 
 /// @notice Mock of the XCM precompile for testing environments
-/// @dev Simulates xcmSend/xcmExecute/weighMessage at unit test level
+/// @dev Simulates send/execute/weighMessage at unit test level
 contract MockXcmPrecompile is IXcm {
     // Record sent messages for assertions
     struct SentMessage {
@@ -16,11 +16,11 @@ contract MockXcmPrecompile is IXcm {
 
     SentMessage[] public sentMessages;
 
-    function xcmExecute(bytes calldata, Weight calldata) external override {
+    function execute(bytes calldata, Weight calldata) external override {
         // No-op in mock
     }
 
-    function xcmSend(bytes calldata destination, bytes calldata message) external override {
+    function send(bytes calldata destination, bytes calldata message) external override {
         sentMessages.push(SentMessage(destination, message));
     }
 

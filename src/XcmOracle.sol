@@ -10,9 +10,9 @@ import "./IXcm.sol";
 ///      Uses the XCM precompile at 0x00000000000000000000000000000000000a0000
 ///
 ///      XCM Query Flow:
-///      1. Contract calls xcmSend() to dispatch query to parachain
+///      1. Contract calls send() to dispatch query to parachain
 ///      2. Parachain processes and responds via XCM
-///      3. Response is handled by xcmExecute() and stored in cache
+///      3. Response is handled by execute() and stored in cache
 ///      4. DApps read cached state via queryAssetState()
 ///
 ///      Note: Since XCM is async (response arrives in a later block),
@@ -104,7 +104,7 @@ contract XcmOracle is IXcmOracle {
         bytes memory message = _encodeAssetQuery(assetId);
 
         // Send via XCM precompile
-        xcm.xcmSend(destination, message);
+        xcm.send(destination, message);
 
         queryDispatched[paraId][assetId] = true;
         emit XcmQueryDispatched(paraId, assetId, message);
@@ -163,43 +163,37 @@ contract XcmOracle is IXcmOracle {
 
     // ─── XCM Encoding Helpers ────────────────────────────────────────
 
-    /// @dev Encode parachain destination in SCALE format
-    /// @param paraId The parachain ID
-    /// @return SCALE-encoded destination bytes
-    function _encodeParachainDestination(uint32 paraId) internal pure returns (bytes memory) {
-        // XCM V4 Location: { parents: 0, interior: X1(Parachain(paraId)) }
-        // SCALE encoding:
-        // - parents: 0 (1 byte: 0x00)
-        // - interior: X1 variant (1 byte: 0x01) + Parachain variant (1 byte: 0x00)
-        //   + paraId (4 bytes LE)
-        bytes memory dest = new bytes(7);
-        dest[0] = 0x00; // parents = 0
-        dest[1] = 0x01; // X1
-        dest[2] = 0x00; // Parachain junction variant
-        dest[3] = bytes1(uint8(paraId & 0xFF));
-        dest[4] = bytes1(uint8((paraId >> 8) & 0xFF));
-        dest[5] = bytes1(uint8((paraId >> 16) & 0xFF));
-        dest[6] = bytes1(uint8((paraId >> 24) & 0xFF));
+    /// @dev Encode destination as VersionedLocation V5 (relay chain)
+    /// @dev For hackathon demo: sends to relay chain (parents=1, Here)
+    ///      because HRMP channels to sibling parachains may not be open on Paseo.
+    ///      In production, would route to specific parachain via X1(Parachain(paraId)).
+    /// @return SCALE-encoded VersionedLocation V5 bytes
+    function _encodeParachainDestination(uint32 /* paraId */) internal pure returns (bytes memory) {
+        // VersionedLocation::V5 { parents: 1, interior: Here }
+        // 0x05 = V5 variant
+        // 0x01 = parents = 1 (go up to relay chain)
+        // 0x00 = Junctions::Here
+        bytes memory dest = new bytes(3);
+        dest[0] = 0x05; // VersionedLocation::V5
+        dest[1] = 0x01; // parents = 1
+        dest[2] = 0x00; // Junctions::Here
         return dest;
     }
 
-    /// @dev Encode a simple asset query as XCM instructions
-    /// @param assetId The asset to query
-    /// @return SCALE-encoded XCM message bytes
-    function _encodeAssetQuery(string memory assetId) internal pure returns (bytes memory) {
-        // XCM V4 message encoding for asset state query
-        // This uses Transact instruction to call runtime API on the parachain
-        // Simplified encoding for hackathon demo:
-        // [Transact { originKind: SovereignAccount, call: encoded_query }]
-        bytes memory assetBytes = bytes(assetId);
-        bytes memory message = abi.encodePacked(
-            uint8(0x06),              // Transact instruction index
-            uint8(0x02),              // OriginKind::SovereignAccount
-            uint64(1_000_000_000),    // requireWeightAtMost refTime
-            uint64(65_536),           // requireWeightAtMost proofSize
-            uint32(assetBytes.length),// call length (compact)
-            assetBytes                // call data (asset query)
-        );
+    /// @dev Encode XCM V5 message with ClearOrigin instruction
+    /// @dev For hackathon demo: sends a minimal valid XCM message that proves
+    ///      real XCM precompile integration from Solidity on PolkaVM.
+    ///      In production, would use Transact or QueryPallet for data retrieval.
+    /// @return SCALE-encoded VersionedXcm V5 bytes
+    function _encodeAssetQuery(string memory /* assetId */) internal pure returns (bytes memory) {
+        // VersionedXcm::V5(Xcm([ClearOrigin]))
+        // 0x05 = V5 variant
+        // 0x04 = Vec length compact(1) = 1 instruction
+        // 0x0a = Instruction::ClearOrigin (index 10)
+        bytes memory message = new bytes(3);
+        message[0] = 0x05; // VersionedXcm::V5
+        message[1] = 0x04; // compact(1) — one instruction
+        message[2] = 0x0a; // ClearOrigin
         return message;
     }
 

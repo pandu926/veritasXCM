@@ -18,8 +18,8 @@ if (fs.existsSync(envPath)) {
 
 const RPC_URL = process.env.RPC_URL || "https://eth-asset-hub-paseo.dotters.network";
 const PRIVATE_KEY = process.env.TEST_PRIVATE_KEY;
-const VERIFIER_ADDRESS = process.env.VERIFIER_ADDRESS || "0xBb1Df6990CCCd16c32939c8E30fb38A9D2cFC820";
-const REGISTRY_ADDRESS = process.env.REGISTRY_ADDRESS || "0x9A340E7eeDA37623556A566473648365dfe390E1";
+const VERIFIER_ADDRESS = process.env.VERIFIER_ADDRESS || "0x461F3A87FE0cDA5f42005004A14b44ebb89181f2";
+const REGISTRY_ADDRESS = process.env.REGISTRY_ADDRESS || "0x37bA0f0B66474E96C96332935e95F98aE72b2d29";
 
 const REGISTRY_ABI = [
   "function getVerificationResult(string calldata assetId, string calldata originChain) external view returns (tuple(uint8 score, uint8 anomalyType, uint256 verifiedAt, bytes32 proof))",

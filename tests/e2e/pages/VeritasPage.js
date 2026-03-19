@@ -28,9 +28,7 @@ class VeritasPage {
     this.verifyBtn = page.locator("#verifyBtn");
     this.verifyBtnText = page.locator(".btn-verify__text");
     this.verifyBtnLoading = page.locator(".btn-verify__loading");
-    this.readStateBtn = page.locator(
-      'button[onclick="handleReadState()"]',
-    );
+    this.readStateBtn = page.locator("#readStateBtn");
 
     // Quick Fill Buttons
     this.quickBtnAdot = page.locator(
@@ -62,7 +60,7 @@ class VeritasPage {
     // Result Details
     this.detailAsset = page.locator("#detailAsset");
     this.detailOrigin = page.locator("#detailOrigin");
-    this.detailVerifiedAt = page.locator("#detailSupply");
+    this.detailVerifiedAt = page.locator("#detailVerifiedAt");
     this.detailAnomaly = page.locator("#detailAnomaly");
 
     // History

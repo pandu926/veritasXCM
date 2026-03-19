@@ -1,21 +1,14 @@
 {
   "dependencies": {
-    "cors": "^2.8.6",
-    "ethers": "^6.16.0",
-    "express": "^5.2.1",
-    "http-proxy-middleware": "^3.0.5",
-    "node-fetch": "^3.3.2"
+    "ethers": "^6.16.0"
   },
   "name": "xcm-polkadot",
   "version": "1.0.0",
-  "description": "**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**",
-  "main": "index.js",
-  "directories": {
-    "lib": "lib",
-    "test": "test"
-  },
+  "description": "VeritasXCM — Trustless cross-chain asset verification oracle on Polkadot Hub using XCM queries and Rust precompiles.",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^3.0.5",
     "playwright": "^1.58.2"
   },
   "scripts": {

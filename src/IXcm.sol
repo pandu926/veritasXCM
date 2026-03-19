@@ -15,12 +15,12 @@ interface IXcm {
     /// @notice Execute an XCM message locally on this chain
     /// @param message SCALE-encoded XCM message bytes
     /// @param weight Estimated weight from weighMessage()
-    function xcmExecute(bytes calldata message, Weight calldata weight) external;
+    function execute(bytes calldata message, Weight calldata weight) external;
 
     /// @notice Send an XCM message to another chain
     /// @param destination SCALE-encoded location of the target parachain
     /// @param message SCALE-encoded XCM instructions for the destination
-    function xcmSend(bytes calldata destination, bytes calldata message) external;
+    function send(bytes calldata destination, bytes calldata message) external;
 
     /// @notice Estimate the weight required for an XCM message
     /// @param message SCALE-encoded XCM message

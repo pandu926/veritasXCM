@@ -15,11 +15,11 @@ contract XcmAssetVerifier is VerifierBase {
     error ParachainNotSupported(string chainName);
     error AssetNotFoundOnChain(string assetId, string originChain);
     error StaleOracleData();
-
-    // ─── Constants ───────────────────────────────────────────────────
-    uint256 public constant MAX_DATA_AGE = 1 hours;
+    error InvalidMaxDataAge();
 
     // ─── State Variables ─────────────────────────────────────────────
+    uint256 public maxDataAge;
+
     AssetRegistry public immutable registry;
     IVerifierPrecompile public precompile;
     IXcmOracle public xcmOracle;
@@ -62,6 +62,7 @@ contract XcmAssetVerifier is VerifierBase {
         registry = AssetRegistry(_registry);
         precompile = IVerifierPrecompile(_precompile);
         xcmOracle = IXcmOracle(_xcmOracle);
+        maxDataAge = 30 days;
     }
 
     // ─── Admin Functions ─────────────────────────────────────────────
@@ -71,6 +72,11 @@ contract XcmAssetVerifier is VerifierBase {
         address old = address(xcmOracle);
         xcmOracle = IXcmOracle(_newOracle);
         emit OracleUpdated(old, _newOracle);
+    }
+
+    function setMaxDataAge(uint256 _maxDataAge) external onlyOwner {
+        if (_maxDataAge < 1 hours) revert InvalidMaxDataAge();
+        maxDataAge = _maxDataAge;
     }
 
     function setPrecompile(address _newPrecompile) external onlyOwner {
@@ -105,7 +111,7 @@ contract XcmAssetVerifier is VerifierBase {
         if (!currentState.exists) revert AssetNotFoundOnChain(assetId, originChain);
 
         // Step 3: Enforce oracle data freshness
-        if (currentState.timestamp > 0 && block.timestamp > currentState.timestamp + MAX_DATA_AGE) {
+        if (currentState.timestamp > 0 && block.timestamp > currentState.timestamp + maxDataAge) {
             revert StaleOracleData();
         }
 

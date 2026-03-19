@@ -20,34 +20,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"
             integrity="sha384-u0NcfwGT0MUYq60cVWPN34m99JhiJTCRG+0JOgmAQ++pTQ4w6AKkwhA9Wj/VjNRi"
             crossorigin="anonymous"></script>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://eth-asset-hub-paseo.dotters.network;" />
-    <style>
-      .btn-connect {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border);
-        border-radius: 100px;
-        padding: 8px 18px;
-        color: var(--text);
-        font-size: 0.82rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-family: "Inter", sans-serif;
-        font-weight: 600;
-      }
-      .btn-connect:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--pink);
-      }
-    </style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://eth-asset-hub-paseo.dotters.network;" />
   </head>
   <body>
-    <!-- ═══ Animated Background ═══ -->
+    <!-- Animated Background -->
     <div class="bg-grid"></div>
     <div class="bg-glow bg-glow--1"></div>
     <div class="bg-glow bg-glow--2"></div>
     <div class="bg-glow bg-glow--3"></div>
 
-    <!-- ═══ Header ═══ -->
+    <!-- Header -->
     <header class="header">
       <div class="header__brand">
         <div class="header__logo">
@@ -87,31 +69,27 @@
         <button
           id="connectWalletBtn"
           class="btn-connect"
-          onclick="connectWallet()"
         >
           Connect Wallet
         </button>
         <div
           id="connectedState"
-          style="display: none; align-items: center; gap: 8px"
+          class="connected-state hidden"
         >
           <div class="status-dot" id="statusDot"></div>
           <span
             id="statusText"
-            style="
-              font-family: &quot;JetBrains Mono&quot;, monospace;
-              font-size: 0.8rem;
-            "
+            class="status-text-mono"
             >Paseo</span
           >
         </div>
       </div>
     </header>
 
-    <!-- ═══ Hero Stats ═══ -->
+    <!-- Hero Stats -->
     <section class="stats">
       <div class="stat-card">
-        <span class="stat-card__value" id="statTests">152</span>
+        <span class="stat-card__value" id="statTests">216</span>
         <span class="stat-card__label">Tests Passing</span>
       </div>
       <div class="stat-card">
@@ -119,68 +97,49 @@
         <span class="stat-card__label">Parachains</span>
       </div>
       <div class="stat-card">
-        <span class="stat-card__value" id="statContracts">9</span>
+        <span class="stat-card__value" id="statContracts">11</span>
         <span class="stat-card__label">Smart Contracts</span>
       </div>
-      <div class="stat-card" style="border-color: var(--safe)">
-        <span
-          class="stat-card__value"
-          style="
-            color: var(--safe);
-            background: none;
-            -webkit-text-fill-color: var(--safe);
-          "
-          >LIVE</span
-        >
+      <div class="stat-card stat-card--live">
+        <span class="stat-card__value stat-card__value--live">LIVE</span>
         <span class="stat-card__label">Paseo Testnet</span>
       </div>
     </section>
 
-    <!-- ═══ Main Content ═══ -->
+    <!-- Main Content -->
     <main class="main">
-      <!-- ─── Verify Panel ─── -->
+      <!-- Verify Panel -->
       <section class="panel panel--verify" id="verifyPanel">
         <h2 class="panel__title">
-          <span class="panel__icon">🔍</span>
+          <span class="panel__icon">&#128269;</span>
           Verify Asset (On-Chain)
         </h2>
 
         <!-- Quick Fill Buttons -->
         <div class="quick-fill">
-          <button
-            class="quick-btn quick-btn--safe"
-            onclick="quickFill('aDOT', 'acala', 1000, event)"
-          >
+          <button class="quick-btn quick-btn--safe">
             <span class="quick-btn__dot safe"></span>aDOT / Acala
           </button>
-          <button
-            class="quick-btn quick-btn--safe"
-            onclick="quickFill('iBTC', 'interlay', 100, event)"
-          >
+          <button class="quick-btn quick-btn--safe">
             <span class="quick-btn__dot safe"></span>iBTC / Interlay
           </button>
-          <button
-            class="quick-btn quick-btn--warn"
-            onclick="quickFill('vDOT', 'bifrost', 500, event)"
-          >
+          <button class="quick-btn quick-btn--warn">
             <span class="quick-btn__dot warn"></span>vDOT / Bifrost
           </button>
-          <button
-            class="quick-btn quick-btn--danger"
-            onclick="quickFill('xcDOT', 'moonbeam', 1000, event)"
-          >
+          <button class="quick-btn quick-btn--danger">
             <span class="quick-btn__dot danger"></span>xcDOT / Moonbeam
           </button>
         </div>
 
         <!-- Form -->
-        <form id="verifyForm" onsubmit="handleVerify(event)">
+        <form id="verifyForm">
           <div class="form-group">
             <label for="assetId">Asset ID</label>
             <input
               type="text"
               id="assetId"
               placeholder="e.g., aDOT, iBTC, vDOT"
+              maxlength="64"
               required
             />
           </div>
@@ -190,6 +149,7 @@
               type="text"
               id="originChain"
               placeholder="e.g., acala, interlay, bifrost"
+              maxlength="64"
               required
             />
           </div>
@@ -205,45 +165,47 @@
           </div>
           <button type="submit" class="btn-verify" id="verifyBtn">
             <span class="btn-verify__text">Verify on Paseo (Submit Tx)</span>
-            <span class="btn-verify__loading" style="display: none">
+            <span class="btn-verify__loading hidden">
               <span class="spinner"></span> Awaiting Tx...
             </span>
           </button>
           <button
             type="button"
-            class="btn-connect"
-            style="
-              width: 100%;
-              margin-top: 8px;
-              border-color: rgba(255, 255, 255, 0.1);
-            "
-            onclick="handleReadState()"
+            id="readStateBtn"
+            class="btn-connect btn-read-state"
           >
             Read Latest State (No Tx)
+          </button>
+          <button
+            type="button"
+            id="xcmSendBtn"
+            class="btn-connect btn-xcm-send"
+          >
+            Send XCM Query (Real Precompile)
           </button>
         </form>
       </section>
 
-      <!-- ─── Result Panel ─── -->
+      <!-- Result Panel -->
       <section class="panel panel--result" id="resultPanel">
         <h2 class="panel__title">
-          <span class="panel__icon">📊</span>
+          <span class="panel__icon">&#128202;</span>
           Smart Contract Result
         </h2>
 
         <!-- Empty State -->
         <div class="result-empty" id="resultEmpty">
-          <div class="result-empty__icon">⛓️</div>
+          <div class="result-empty__icon">&#9939;&#65039;</div>
           <p>
             Select an asset to verify its legitimacy<br /><small
-              style="opacity: 0.5"
+              class="result-empty__sub"
               >Reads live state from Paseo Asset Hub</small
             >
           </p>
         </div>
 
         <!-- Result Content -->
-        <div class="result-content" id="resultContent" style="display: none">
+        <div class="result-content hidden" id="resultContent">
           <!-- Score Ring -->
           <div class="score-ring-container">
             <svg class="score-ring" viewBox="0 0 160 160">
@@ -262,21 +224,13 @@
 
           <!-- Status Badge -->
           <div class="result-badge" id="resultBadge">
-            <span class="result-badge__icon" id="badgeIcon">✓</span>
+            <span class="result-badge__icon" id="badgeIcon">&#10003;</span>
             <span class="result-badge__text" id="badgeText">VERIFIED</span>
           </div>
 
           <!-- Message -->
           <p class="result-message" id="resultMessage"></p>
-          <p
-            style="
-              font-size: 0.75rem;
-              color: var(--pink);
-              margin-bottom: 16px;
-              font-family: monospace;
-            "
-            id="txHashLink"
-          ></p>
+          <p class="tx-hash-link" id="txHashLink"></p>
 
           <!-- Details -->
           <div class="result-details" id="resultDetails">
@@ -290,7 +244,7 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">Verified At</span>
-              <span class="detail-value" id="detailSupply">—</span>
+              <span class="detail-value" id="detailVerifiedAt">—</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Anomaly Status</span>
@@ -301,7 +255,46 @@
       </section>
     </main>
 
-    <!-- ═══ History Table ═══ -->
+    <!-- Ecosystem Health Dashboard -->
+    <section class="dashboard-section" id="dashboardSection">
+      <h2 class="dashboard-title">Ecosystem Health</h2>
+      <div class="dashboard-grid" id="dashboardGrid">
+        <div class="dash-card" data-asset="aDOT" data-chain="acala">
+          <div class="dash-card__header">
+            <span class="dash-card__name">aDOT</span>
+            <span class="dash-card__chain">acala</span>
+          </div>
+          <div class="dash-card__score">...</div>
+          <div class="dash-card__status">Loading</div>
+        </div>
+        <div class="dash-card" data-asset="iBTC" data-chain="interlay">
+          <div class="dash-card__header">
+            <span class="dash-card__name">iBTC</span>
+            <span class="dash-card__chain">interlay</span>
+          </div>
+          <div class="dash-card__score">...</div>
+          <div class="dash-card__status">Loading</div>
+        </div>
+        <div class="dash-card" data-asset="vDOT" data-chain="bifrost">
+          <div class="dash-card__header">
+            <span class="dash-card__name">vDOT</span>
+            <span class="dash-card__chain">bifrost</span>
+          </div>
+          <div class="dash-card__score">...</div>
+          <div class="dash-card__status">Loading</div>
+        </div>
+        <div class="dash-card" data-asset="xcDOT" data-chain="moonbeam">
+          <div class="dash-card__header">
+            <span class="dash-card__name">xcDOT</span>
+            <span class="dash-card__chain">moonbeam</span>
+          </div>
+          <div class="dash-card__score">...</div>
+          <div class="dash-card__status">Loading</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Table -->
     <section class="history-section" id="historySection">
       <h2 class="section-title">On-Chain Verifications</h2>
       <div class="table-container">
@@ -320,10 +313,10 @@
       </div>
     </section>
 
-    <!-- ═══ Footer ═══ -->
+    <!-- Footer -->
     <footer class="footer">
       <p>
-        Built for <strong>Polkadot Solidity Hackathon 2026</strong> • Powered by
+        Built for <strong>Polkadot Solidity Hackathon 2026</strong> &bull; Powered by
         XCM + PolkaVM + Rust
       </p>
       <p class="footer__sub">
@@ -331,6 +324,10 @@
       </p>
     </footer>
 
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/wallet.js"></script>
+    <script src="js/verify.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -3,7 +3,7 @@ cache/
 out/
 broadcast/
 .foundry_cache/
-
+.agents
 # Node
 node_modules/
 dist/
@@ -43,3 +43,6 @@ xcm-asset-verifier-oracle.md
 frontend/node_modules/
 frontend/dist/
 DEMO_SCRIPT.md
+assistant/
+docs/
+agent/

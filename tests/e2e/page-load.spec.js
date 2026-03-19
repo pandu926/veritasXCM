@@ -38,13 +38,13 @@ test.describe("Page Load & Initial State", () => {
     await page.waitForTimeout(2000);
 
     const testsVal = await veritasPage.statTests.textContent();
-    expect(Number(testsVal)).toBe(152);
+    expect(Number(testsVal)).toBe(216);
 
     const parachainsVal = await veritasPage.statParachains.textContent();
     expect(Number(parachainsVal)).toBe(4);
 
     const contractsVal = await veritasPage.statContracts.textContent();
-    expect(Number(contractsVal)).toBe(9);
+    expect(Number(contractsVal)).toBe(11);
   });
 
   test("LIVE status is displayed for Paseo Testnet", async ({ page }) => {

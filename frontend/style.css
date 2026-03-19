@@ -385,6 +385,93 @@ body {
     align-self: center; margin-top: 10px;
 }
 
+/* ═══ Ecosystem Health Dashboard ═══ */
+.dashboard-section {
+    margin-bottom: 48px;
+    position: relative; z-index: 1;
+    max-width: 900px; margin-left: auto; margin-right: auto;
+    padding: 0 24px;
+}
+
+.dashboard-title {
+    font-size: 1.2rem; font-weight: 700;
+    margin-bottom: 20px; text-align: center;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.dash-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    backdrop-filter: blur(12px);
+}
+
+.dash-card:hover {
+    border-color: var(--pink);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(230, 0, 122, 0.15);
+}
+
+.dash-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.dash-card__name {
+    font-weight: 700;
+    font-size: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.dash-card__chain {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dash-card__score {
+    font-size: 2.2rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: var(--text-dim);
+    transition: color 0.5s;
+}
+
+.dash-card__status {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 100px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dim);
+    transition: background 0.5s, color 0.5s;
+}
+
+.dash-card__status.verified { background: var(--safe-bg); color: var(--safe); }
+.dash-card__status.uncertain { background: var(--uncertain-bg); color: var(--uncertain); }
+.dash-card__status.suspicious { background: var(--danger-bg); color: var(--danger); }
+
 /* ═══ History Table ═══ */
 .history-section { margin-bottom: 48px; }
 
@@ -436,6 +523,12 @@ body {
 .status-tag.verified { background: var(--safe-bg); color: var(--safe); }
 .status-tag.rejected { background: var(--danger-bg); color: var(--danger); }
 
+.td-tx-hash {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+}
+
 /* ═══ Architecture ═══ */
 .arch-section { margin-bottom: 48px; }
 
@@ -484,6 +577,74 @@ body {
 .footer strong { color: var(--pink); }
 .footer__sub { margin-top: 6px; font-size: 0.72rem; }
 
+/* ═══ Button Connect ═══ */
+.btn-connect {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 18px;
+    color: var(--text);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+}
+
+.btn-connect:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--pink);
+}
+
+/* ═══ Utility ═══ */
+.hidden { display: none !important; }
+
+/* ═══ Inline Style Replacements ═══ */
+.connected-state {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-text-mono {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.8rem;
+}
+
+.stat-card--live {
+    border-color: var(--safe);
+}
+
+.stat-card__value--live {
+    color: var(--safe);
+    background: none;
+    -webkit-text-fill-color: var(--safe);
+}
+
+.result-empty__sub {
+    opacity: 0.5;
+}
+
+.tx-hash-link {
+    font-size: 0.75rem;
+    color: var(--pink);
+    margin-bottom: 16px;
+    font-family: monospace;
+}
+
+.btn-read-state {
+    width: 100%;
+    margin-top: 8px;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-xcm-send {
+    width: 100%;
+    margin-top: 8px;
+    border-color: var(--pink);
+    color: var(--pink);
+}
+
 /* ═══ Responsive ═══ */
 @media (max-width: 768px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
@@ -492,4 +653,5 @@ body {
     .flow { flex-direction: column; align-items: center; }
     .flow-arrow { transform: rotate(90deg); }
     .arch-layer { flex-direction: column; align-items: center; }
+    .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
 }
